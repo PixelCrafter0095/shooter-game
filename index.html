@@ -158,7 +158,7 @@
         .check-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }
         .range-slider { width: 55%; }
 
-        /* Map-Editor Split Layout (No shift / boxes stay plain) */
+        /* Multi-Slot Design Selector Layout Styles */
         #editor-ui {
             position: absolute;
             top: 0; left: 0; width: 800px; height: 500px;
@@ -168,12 +168,24 @@
         }
         .editor-workspace {
             flex: 1; display: flex; flex-direction: column; align-items: center;
-            justify-content: center; background: #07080d; padding: 20px;
+            justify-content: center; background: #07080d; padding: 15px 20px;
         }
         .editor-sidebar {
             width: 260px; background: #11131f; border-left: 2px solid #1e2230;
             display: flex; flex-direction: column; box-sizing: border-box; padding: 20px; text-align: left;
+            overflow-y: auto;
         }
+        .slot-selector-row {
+            display: flex; gap: 6px; width: 100%; margin-bottom: 15px; justify-content: center;
+        }
+        .slot-pill {
+            background: #1e293b; color: #94a3b8; font-size: 11px; font-weight: bold;
+            padding: 6px 10px; border-radius: 4px; border: 1px solid #334155; cursor: pointer; text-align: center; flex: 1;
+        }
+        .slot-pill.active { background: #10b981; color: #fff; border-color: #34d399; }
+        .slot-pill.prebuilt { border-color: #3b82f6; }
+        .slot-pill.prebuilt.active { background: #3b82f6; color: #fff; }
+
         .pixel-grid {
             display: grid; grid-template-columns: repeat(8, 38px); gap: 2px;
             background: #181b28; padding: 6px; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
@@ -182,17 +194,16 @@
             width: 38px; height: 38px; background: #030305; border-radius: 3px; cursor: pointer;
             box-sizing: border-box; border: 1px solid transparent;
         }
-        /* Highlight box only via color shift, no moving up or resizing */
         .pixel-cell:hover { background-color: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); }
-        .editor-section-title { font-size: 12px; font-weight: bold; color: #64748b; letter-spacing: 1px; margin: 15px 0 8px 0; text-transform: uppercase; }
-        .palette-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .editor-section-title { font-size: 11px; font-weight: bold; color: #64748b; letter-spacing: 1px; margin: 12px 0 6px 0; text-transform: uppercase; }
+        .palette-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
         .color-swatch {
-            height: 32px; border-radius: 6px; cursor: pointer; border: 2px solid transparent; box-sizing: border-box;
+            height: 28px; border-radius: 5px; cursor: pointer; border: 2px solid transparent; box-sizing: border-box;
         }
         .color-swatch.active { border-color: #fff; box-shadow: 0 0 8px currentColor; }
-        .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
         .tool-btn {
-            background: #1e293b; color: #94a3b8; font-size: 13px; font-weight: bold; padding: 8px;
+            background: #1e293b; color: #94a3b8; font-size: 12px; font-weight: bold; padding: 6px;
             border: 1px solid #334155; border-radius: 6px; cursor: pointer; text-align: center;
         }
         .tool-btn.active { background: #3b82f6; color: white; border-color: #60a5fa; }
@@ -223,7 +234,7 @@
             </div>
             
             <div class="menu-row">
-                <button class="secondary-btn" onclick="openEditorScreen()">PLAYER SHIP EDITOR</button>
+                <button class="secondary-btn" onclick="openEditorScreen()">SHIP BLUEPRINTS SELECTOR</button>
                 <button class="secondary-btn" onclick="openOptionsScreen()">OPTIONS</button>
             </div>
         </div>
@@ -263,12 +274,14 @@
 
         <div id="editor-ui" class="hidden">
             <div class="editor-workspace">
-                <h2 style="margin: 0 0 5px 0; font-size:22px; letter-spacing:1px;">PLAYER SHIP BLUEPRINT EDITOR</h2>
-                <p style="color: #64748b; font-size:13px; margin: 0 0 20px 0;">Hold click & drag to paint custom 8x8 ship avatars</p>
+                <h2 style="margin: 0 0 2px 0; font-size:22px; letter-spacing:1px;">BLUEPRINT CATALOG & EDITOR</h2>
+                <p style="color: #64748b; font-size:13px; margin: 0 0 12px 0;">Select a blueprint layout slot below to apply or edit your hull structure</p>
+                
+                <div class="slot-selector-row" id="slot-container-ui"></div>
                 <div class="pixel-grid" id="editor-grid-container"></div>
             </div>
             <div class="editor-sidebar">
-                <div class="editor-section-title" style="margin-top:0;">Painting Mode</div>
+                <div class="editor-section-title" style="margin-top:0;">Painting Mechanism</div>
                 <div class="tool-grid">
                     <div id="tool-draw" class="tool-btn active" onclick="setEditorTool('draw')">PENCIL</div>
                     <div id="tool-erase" class="tool-btn" onclick="setEditorTool('erase')">ERASER</div>
@@ -286,14 +299,18 @@
                     <div id="swatch-8" class="color-swatch" style="background:#f97316;" onclick="selectEditorColor('#f97316', 8)"></div>
                 </div>
 
-                <div class="editor-section-title">Bulk Actions</div>
-                <div class="tool-grid" style="margin-bottom:auto;">
-                    <div class="tool-btn" onclick="fillEntireEditorGrid()" style="background:#1e293b; color:#fff;">FILL ALL</div>
-                    <div class="tool-btn" onclick="clearEditorGrid()" style="background:#1e293b; color:#fff;">CLEAR</div>
+                <div id="editor-actions-pane">
+                    <div class="editor-section-title">Bulk Actions</div>
+                    <div class="tool-grid">
+                        <div class="tool-btn" onclick="fillEntireEditorGrid()" style="background:#1e293b; color:#fff;">FILL ALL</div>
+                        <div class="tool-btn" onclick="clearEditorGrid()" style="background:#1e293b; color:#fff;">CLEAR</div>
+                    </div>
                 </div>
 
-                <button onclick="saveCustomShipBlueprint()" style="width:100%; margin-bottom:10px;">SAVE BLUEPRINT</button>
-                <button class="danger-btn" onclick="exitEditorScreen()" style="width:100%;">EXIT SCREEN</button>
+                <div style="margin-top:auto; padding-top:15px;">
+                    <button id="save-blueprint-btn" onclick="saveCustomShipBlueprint()" style="width:100%; margin-bottom:10px;">EQUIP DESIGN</button>
+                    <button class="danger-btn" onclick="exitEditorScreen()" style="width:100%;">EXIT SCREEN</button>
+                </div>
             </div>
         </div>
 
@@ -324,18 +341,21 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// System Parameters
+// System Parameters & Cooldown Clock Variables
 let score = 0, lives = 3;
 let isPlaying = false, isPaused = false, isLevelsMode = false;
 let currentLevel = 1, activeViewWorld = 1, maxUnlockedLevel = 1;
 let lastTime = 0, animationId = null;
+
+const FIRE_COOLDOWN_TIME = 160; // Weapon fire throttle speed in milliseconds
+let timeSinceLastShot = 0; 
 
 // Sandbox Settings
 let sandboxLives = 3, sandboxAsteroidCount = 5;
 let sandboxBuffs = { TRIPLE: true, SHIELD: true };
 let targetAsteroidMaxCount = 5, activeBuffs = { TRIPLE: true, SHIELD: true };
 
-// Player Physics Engine Config
+// Player Physics Configuration
 let player = { 
     x: 400, y: 250, w: 42, h: 42, 
     vx: 0, vy: 0, angle: -Math.PI / 2, 
@@ -345,41 +365,82 @@ let bullets = [], obstacles = [], powerups = [], stars = [];
 let keys = {};
 let activeTimers = { TRIPLE: 0, SHIELD: 0 };
 
-// Editor Grid Properties
+// Design Blueprint Slots Setup (3 Custom Slots, 3 Hardcoded Prebuilts)
+let activeSelectedSlotId = "custom1"; 
 let isLeftMouseDown = false;
 let currentEditorTool = "draw"; 
 let currentColorSelection = "#3b82f6";
-let activeShipColors = Array.from({length: 8}, () => Array(8).fill("#050508"));
 
+let customBlueprintSlots = {
+    custom1: Array.from({length: 8}, () => Array(8).fill("#050508")),
+    custom2: Array.from({length: 8}, () => Array(8).fill("#050508")),
+    custom3: Array.from({length: 8}, () => Array(8).fill("#050508"))
+};
+
+const prebuiltBlueprintSlots = {
+    prebuilt1: [ // Delta Star
+        ["#050508","#050508","#050508","#3b82f6","#3b82f6","#050508","#050508","#050508"],
+        ["#050508","#050508","#3b82f6","#3b82f6","#3b82f6","#3b82f6","#050508","#050508"],
+        ["#050508","#050508","#3b82f6","#06b6d4","#06b6d4","#3b82f6","#050508","#050508"],
+        ["#050508","#3b82f6","#3b82f6","#06b6d4","#06b6d4","#3b82f6","#3b82f6","#050508"],
+        ["#050508","#3b82f6","#06b6d4","#06b6d4","#06b6d4","#06b6d4","#3b82f6","#050508"],
+        ["#3b82f6","#3b82f6","#3b82f6","#3b82f6","#3b82f6","#3b82f6","#3b82f6","#3b82f6"],
+        ["#3b82f6","#3b82f6","#050508","#3b82f6","#3b82f6","#050508","#3b82f6","#3b82f6"],
+        ["#3b82f6","#050508","#050508","#050508","#050508","#050508","#050508","#3b82f6"]
+    ],
+    prebuilt2: [ // Dreadnought Cruiser
+        ["#050508","#050508","#ef4444","#ef4444","#ef4444","#ef4444","#050508","#050508"],
+        ["#050508","#ef4444","#f97316","#f97316","#f97316","#f97316","#ef4444","#050508"],
+        ["#050508","#ef4444","#f97316","#f97316","#f97316","#f97316","#ef4444","#050508"],
+        ["#ef4444","#ef4444","#ef4444","#ef4444","#ef4444","#ef4444","#ef4444","#ef4444"],
+        ["#ef4444","#ef4444","#050508","#050508","#050508","#050508","#ef4444","#ef4444"],
+        ["#ef4444","#050508","#050508","#050508","#050508","#050508","#050508","#ef4444"],
+        ["#ef4444","#ef4444","#050508","#050508","#050508","#050508","#ef4444","#ef4444"],
+        ["#f97316","#050508","#050508","#050508","#050508","#050508","#050508","#f97316"]
+    ],
+    prebuilt3: [ // Vanguard Arrowhead
+        ["#050508","#050508","#050508","#10b981","#10b981","#050508","#050508","#050508"],
+        ["#050508","#050508","#10b981","#10b981","#10b981","#10b981","#050508","#050508"],
+        ["#050508","#10b981","#10b981","#eab308","#eab308","#10b981","#10b981","#050508"],
+        ["#050508","#10b981","#eab308","#eab308","#eab308","#eab308","#10b981","#050508"],
+        ["#10b981","#10b981","#eab308","#050508","#050508","#eab308","#10b981","#10b981"],
+        ["#10b981","#050508","#050508","#050508","#050508","#050508","#050508","#10b981"],
+        ["#10b981","#10b981","#050508","#050508","#050508","#050508","#10b981","#10b981"],
+        ["#eab308","#10b981","#050508","#050508","#050508","#050508","#10b981","#eab308"]
+    ]
+};
+
+// Initialize Custom Slot 1 with default asset so user starts with a layout
 let defaultMatrix = [
-    [0,0,0,1,1,0,0,0],
-    [0,0,1,1,1,1,0,0],
-    [0,0,1,1,1,1,0,0],
-    [0,1,1,1,1,1,1,0],
-    [0,1,1,1,1,1,1,0],
-    [1,1,1,1,1,1,1,1],
-    [1,1,0,1,1,0,1,1],
-    [1,0,0,0,0,0,0,1]
+    [0,0,0,1,1,0,0,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,1,1,1,1,0],
+    [0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,0,1,1,0,1,1],[1,0,0,0,0,0,0,1]
 ];
 for(let r=0; r<8; r++) {
-    for(let c=0; c<8; c++) if(defaultMatrix[r][c] === 1) activeShipColors[r][c] = "#3b82f6";
+    for(let c=0; c<8; c++) if(defaultMatrix[r][c] === 1) customBlueprintSlots.custom1[r][c] = "#3b82f6";
 }
 
-// Background space layer
+// Active equipped matrix point reference
+let activeShipColors = customBlueprintSlots.custom1;
+
+// Fill Space Stars Matrix
 for (let i = 0; i < 85; i++) {
     stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 1.8 + 0.4 });
 }
 
 window.addEventListener("mousedown", () => { isLeftMouseDown = true; });
 window.addEventListener("mouseup", () => { isLeftMouseDown = false; });
-
-window.addEventListener("keydown", e => {
-    keys[e.key] = true;
-    if(e.key === "Escape") returnToHome();
-    if(e.key.toLowerCase() === "p" && isPlaying) togglePause();
-    if(e.key === " " && isPlaying && !isPaused) fireBullet();
-});
+window.addEventListener("keydown", e => { keys[e.key] = true; if(e.key === "Escape") returnToHome(); if(e.key.toLowerCase() === "p" && isPlaying) togglePause(); });
 window.addEventListener("keyup", e => keys[e.key] = false);
+
+function checkWeaponFiring(dt) {
+    timeSinceLastShot += dt;
+    if(keys[" "] && isPlaying && !isPaused) {
+        if(timeSinceLastShot >= FIRE_COOLDOWN_TIME) {
+            fireBullet();
+            timeSinceLastShot = 0;
+        }
+    }
+}
 
 function fireBullet() {
     const bSpeed = 10;
@@ -401,7 +462,11 @@ function spawnAsteroid(sizeClass = 3, explicitX = null, explicitY = null) {
     let y = explicitY !== null ? explicitY : Math.random() * canvas.height;
     
     let aAngle = Math.random() * Math.PI * 2;
-    let speed = sizeClass === 3 ? 1.1 : sizeClass === 2 ? 1.8 : 2.5;
+    
+    // Balanced Speed Curve Calculation: levels add mild difficulty but don't become instantly unplayable
+    let baseSpeed = sizeClass === 3 ? 1.0 : sizeClass === 2 ? 1.6 : 2.3;
+    let levelModifier = isLevelsMode ? Math.min(1.8, 1.0 + (currentLevel * 0.06)) : 1.0;
+    let speed = baseSpeed * levelModifier;
 
     let vertices = [];
     let totalPoints = 8 + Math.floor(Math.random() * 5);
@@ -443,37 +508,73 @@ function saveOptionsAndReturn() {
     returnToHome();
 }
 
-/* Map Editor Canvas Actions */
+/* Blueprint Multi-Slot System Implementation */
 function openEditorScreen() {
-    document.getElementById("menu").classList.add("hidden"); document.getElementById("editor-ui").classList.remove("hidden");
-    const gridContainer = document.getElementById("editor-grid-container"); gridContainer.innerHTML = "";
+    document.getElementById("menu").classList.add("hidden"); 
+    document.getElementById("editor-ui").classList.remove("hidden");
     
+    renderSlotPillSelectors();
+    buildEditorGridUI();
+}
+
+function renderSlotPillSelectors() {
+    const slotContainer = document.getElementById("slot-container-ui");
+    slotContainer.innerHTML = "";
+
+    // Generate Custom Editable Slots
+    for(let i = 1; i <= 3; i++) {
+        let key = `custom${i}`;
+        let pill = document.createElement("div");
+        pill.className = `slot-pill ${activeSelectedSlotId === key ? 'active' : ''}`;
+        pill.textContent = `SLOT ${i}`;
+        pill.onclick = () => { activeSelectedSlotId = key; renderSlotPillSelectors(); buildEditorGridUI(); };
+        slotContainer.appendChild(pill);
+    }
+
+    // Generate Hardcoded Prebuilt Patterns
+    const labels = ["DELTA", "CRUISER", "ARROW"];
+    for(let i = 1; i <= 3; i++) {
+        let key = `prebuilt${i}`;
+        let pill = document.createElement("div");
+        pill.className = `slot-pill prebuilt ${activeSelectedSlotId === key ? 'active' : ''}`;
+        pill.textContent = labels[i-1];
+        pill.onclick = () => { activeSelectedSlotId = key; renderSlotPillSelectors(); buildEditorGridUI(); };
+        slotContainer.appendChild(pill);
+    }
+}
+
+function buildEditorGridUI() {
+    const gridContainer = document.getElementById("editor-grid-container");
+    gridContainer.innerHTML = "";
+    
+    // Check if slot is prebuilt to block/hide bulk edit operations
+    let isPrebuilt = activeSelectedSlotId.startsWith("prebuilt");
+    document.getElementById("editor-actions-pane").style.display = isPrebuilt ? "none" : "block";
+
+    let workingMatrix = isPrebuilt ? prebuiltBlueprintSlots[activeSelectedSlotId] : customBlueprintSlots[activeSelectedSlotId];
+
     for(let r=0; r<8; r++) {
         for(let c=0; c<8; c++) {
             let cell = document.createElement("div"); 
             cell.className = "pixel-cell"; 
-            cell.style.backgroundColor = activeShipColors[r][c];
+            cell.style.backgroundColor = workingMatrix[r][c];
             
-            cell.addEventListener("mousedown", (e) => {
-                e.preventDefault();
-                applyPaintToCell(r, c, cell);
-            });
-            cell.addEventListener("mouseenter", () => {
-                if(isLeftMouseDown) {
-                    applyPaintToCell(r, c, cell);
-                }
-            });
+            if(!isPrebuilt) {
+                cell.addEventListener("mousedown", (e) => { e.preventDefault(); applyPaintToCell(r, c, cell); });
+                cell.addEventListener("mouseenter", () => { if(isLeftMouseDown) applyPaintToCell(r, c, cell); });
+            }
             gridContainer.appendChild(cell);
         }
     }
 }
 
 function applyPaintToCell(r, c, cellElement) {
+    let currentMatrix = customBlueprintSlots[activeSelectedSlotId];
     if(currentEditorTool === "draw") {
-        activeShipColors[r][c] = currentColorSelection;
+        currentMatrix[r][c] = currentColorSelection;
         cellElement.style.backgroundColor = currentColorSelection;
     } else {
-        activeShipColors[r][c] = "#050508";
+        currentMatrix[r][c] = "#050508";
         cellElement.style.backgroundColor = "#050508";
     }
 }
@@ -490,14 +591,24 @@ function selectEditorColor(color, id) {
     setEditorTool("draw");
 }
 function fillEntireEditorGrid() {
-    activeShipColors = Array.from({length: 8}, () => Array(8).fill(currentColorSelection));
-    openEditorScreen();
+    if(activeSelectedSlotId.startsWith("prebuilt")) return;
+    customBlueprintSlots[activeSelectedSlotId] = Array.from({length: 8}, () => Array(8).fill(currentColorSelection));
+    buildEditorGridUI();
 }
 function clearEditorGrid() {
-    activeShipColors = Array.from({length: 8}, () => Array(8).fill("#050508"));
-    openEditorScreen();
+    if(activeSelectedSlotId.startsWith("prebuilt")) return;
+    customBlueprintSlots[activeSelectedSlotId] = Array.from({length: 8}, () => Array(8).fill("#050508"));
+    buildEditorGridUI();
 }
-function saveCustomShipBlueprint() { alert("Ship design saved!"); exitEditorScreen(); }
+function saveCustomShipBlueprint() { 
+    if(activeSelectedSlotId.startsWith("prebuilt")) {
+        activeShipColors = prebuiltBlueprintSlots[activeSelectedSlotId];
+    } else {
+        activeShipColors = customBlueprintSlots[activeSelectedSlotId];
+    }
+    alert("Layout equipped to primary active battle fleet!"); 
+    exitEditorScreen(); 
+}
 function exitEditorScreen() { document.getElementById("editor-ui").classList.add("hidden"); document.getElementById("menu").classList.remove("hidden"); }
 
 function returnToHome() {
@@ -515,7 +626,9 @@ function startGame() {
     
     if(isLevelsMode) {
         document.getElementById("hud-level").textContent = `GALAXY ${Math.floor((currentLevel-1)/10)+1} - SEC ${((currentLevel-1)%10)+1}`;
-        lives = 3; targetAsteroidMaxCount = 3 + currentLevel;
+        lives = 3; 
+        // Balanced scaling target formula: Caps maximum asteroid counts smoothly
+        targetAsteroidMaxCount = 3 + Math.floor(currentLevel * 0.7); 
         activeBuffs = { TRIPLE: true, SHIELD: true };
     } else {
         document.getElementById("hud-level").textContent = "SANDBOX FLIGHT";
@@ -523,7 +636,7 @@ function startGame() {
         activeBuffs = { ...sandboxBuffs };
     }
     
-    score = 0; bullets = []; obstacles = []; powerups = [];
+    score = 0; bullets = []; obstacles = []; powerups = []; timeSinceLastShot = FIRE_COOLDOWN_TIME;
     player.x = canvas.width/2; player.y = canvas.height/2; player.vx = 0; player.vy = 0; player.angle = -Math.PI/2;
     activeTimers.TRIPLE = 0; activeTimers.SHIELD = 0;
     document.getElementById("score").textContent = score; document.getElementById("lives").textContent = lives;
@@ -549,6 +662,8 @@ function isPlayerMatrixEmpty() {
 function update(dt) {
     if(!isPlaying || isPaused) return;
 
+    checkWeaponFiring(dt);
+
     if(keys["ArrowLeft"] || keys["a"]) player.angle -= player.rotationSpeed;
     if(keys["ArrowRight"] || keys["d"]) player.angle += player.rotationSpeed;
     
@@ -560,7 +675,6 @@ function update(dt) {
     player.vx *= player.friction; player.vy *= player.friction;
     player.x += player.vx; player.y += player.vy;
 
-    // Screen wrapping parameters
     if(player.x < -player.w) player.x = canvas.width;
     if(player.x > canvas.width + player.w) player.x = -player.w;
     if(player.y < -player.h) player.y = canvas.height;
@@ -618,13 +732,11 @@ function update(dt) {
                 if(Math.random() < 0.20) {
                     let type = Math.random() > 0.5 ? "TRIPLE" : "SHIELD";
                     if(activeBuffs[type]) {
-                        // Calculate direction facing toward the absolute center
                         let targetAngle = Math.atan2(250 - o.y, 400 - o.x);
                         let pSpeed = 2.2;
                         powerups.push({
                             x: o.x, y: o.y, w:18, h:18, type: type,
-                            vx: Math.cos(targetAngle) * pSpeed,
-                            vy: Math.sin(targetAngle) * pSpeed
+                            vx: Math.cos(targetAngle) * pSpeed, vy: Math.sin(targetAngle) * pSpeed
                         });
                     }
                 }
@@ -645,44 +757,28 @@ function update(dt) {
         }
     }
 
-    // Power-up continuous flight movement update
     for(let i=powerups.length-1; i>=0; i--) {
-        let p = powerups[i];
-        p.x += p.vx * (dt / 16.6);
-        p.y += p.vy * (dt / 16.6);
-
-        // Wrap or clean drop items off limits if they drift away completely
-        if(p.x < -30 || p.x > canvas.width + 30 || p.y < -30 || p.y > canvas.height + 30) {
-            powerups.splice(i, 1);
-            continue;
-        }
-
+        let p = powerups[i]; p.x += p.vx * (dt / 16.6); p.y += p.vy * (dt / 16.6);
+        if(p.x < -30 || p.x > canvas.width + 30 || p.y < -30 || p.y > canvas.height + 30) { powerups.splice(i, 1); continue; }
         let dPX = p.x - player.x; let dPY = p.y - player.y;
-        if(Math.sqrt(dPX*dPX + dPY*dPY) < player.w * 0.85) {
-            activeTimers[p.type] = 8000; powerups.splice(i, 1);
-        }
+        if(Math.sqrt(dPX*dPX + dPY*dPY) < player.w * 0.85) { activeTimers[p.type] = 8000; powerups.splice(i, 1); }
     }
 }
 
 function render() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    
-    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-    stars.forEach(s => ctx.fillRect(s.x, s.y, s.size, s.size));
+    ctx.fillStyle = "rgba(255, 255, 255, 0.7)"; stars.forEach(s => ctx.fillRect(s.x, s.y, s.size, s.size));
 
-    // Ship Translate
+    // Render Matrix Core
     ctx.save();
     ctx.translate(player.x, player.y);
     ctx.rotate(player.angle + Math.PI / 2);
-    
     let pSize = player.w / 8;
     
     if(isPlayerMatrixEmpty()) {
         ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 2.5; ctx.fillStyle = "#111424";
-        ctx.beginPath();
-        ctx.moveTo(0, -player.h/2); ctx.lineTo(player.w/2, player.h/2);
-        ctx.lineTo(0, player.h/3); ctx.lineTo(-player.w/2, player.h/2);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, -player.h/2); ctx.lineTo(player.w/2, player.h/2);
+        ctx.lineTo(0, player.h/3); ctx.lineTo(-player.w/2, player.h/2); ctx.closePath(); ctx.fill(); ctx.stroke();
     } else {
         for(let r=0; r<8; r++) {
             for(let c=0; c<8; c++) {
@@ -703,47 +799,26 @@ function render() {
         ctx.arc(player.x, player.y, player.w * 0.9, 0, Math.PI*2); ctx.stroke();
     }
 
-    // Actual Plasma Laser Bolts (Elongated vector rays)
+    // High-Velocity Plasma Laser Bolt Vectors
     bullets.forEach(b => {
-        ctx.save();
-        ctx.translate(b.x, b.y);
-        ctx.rotate(b.angle);
-        
-        // Laser outer beam glow tail
-        ctx.strokeStyle = "#ff3333";
-        ctx.lineWidth = 4;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(-14, 0);
-        ctx.lineTo(2, 0);
-        ctx.stroke();
-        
-        // Inner hot laser focal point line
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(-8, 0);
-        ctx.lineTo(2, 0);
-        ctx.stroke();
-        
+        ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.angle);
+        ctx.strokeStyle = "#ff3333"; ctx.lineWidth = 4; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(2, 0); ctx.stroke();
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(2, 0); ctx.stroke();
         ctx.restore();
     });
 
     obstacles.forEach(o => {
-        ctx.save();
-        ctx.translate(o.x, o.y);
+        ctx.save(); ctx.translate(o.x, o.y);
         ctx.fillStyle = "#161822"; ctx.strokeStyle = "#4b5563"; ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(o.vertices[0].x, o.vertices[0].y);
+        ctx.beginPath(); ctx.moveTo(o.vertices[0].x, o.vertices[0].y);
         for(let i=1; i<o.vertices.length; i++) ctx.lineTo(o.vertices[i].x, o.vertices[i].y);
         ctx.closePath(); ctx.fill(); ctx.stroke();
-
         ctx.strokeStyle = "#2e3344"; ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(o.vertices[0].x * 0.6, o.vertices[0].y * 0.6);
+        ctx.beginPath(); ctx.moveTo(o.vertices[0].x * 0.6, o.vertices[0].y * 0.6);
         for(let i=1; i<Math.floor(o.vertices.length/1.5); i++) ctx.lineTo(o.vertices[i].x * 0.5, o.vertices[i].y * 0.5);
-        ctx.stroke();
-        ctx.restore();
+        ctx.stroke(); ctx.restore();
     });
 
     powerups.forEach(p => {
