@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced 360° Vector Space Shooter Engine</title>
+    <style>
+        body {
+            margin: 0;
+            background: #090a0f;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #fff;
+            font-family: system-ui, sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+        #wrapper {
+            position: relative;
+            text-align: center;
+        }
+        #hud {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 5px;
+            font-size: 18px;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+            height: 24px;
+            width: 800px;
+            box-sizing: border-box;
+        }
+        #left-hud {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        #status-container {
+            display: flex;
+            gap: 8px;
+        }
+        .status-badge {
+            color: #fff;
+            font-size: 13px;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        #canvas-container {
+            position: relative;
+            width: 800px;
+            height: 500px;
+        }
+        canvas {
+            background: #020205;
+            border: 2px solid #1e2230;
+            border-radius: 8px;
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 800px;
+            height: 500px;
+            background: rgba(5, 5, 8, 0.96);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 8px;
+            box-sizing: border-box;
+            z-index: 10;
+            border: 2px solid #1e2230;
+        }
+        .hidden { display: none !important; }
+        button {
+            padding: 10px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        button:hover { background: #2563eb; }
+        button:active { transform: scale(0.98); }
+        .secondary-btn { background: #4b5563; }
+        .secondary-btn:hover { background: #374151; }
+        .danger-btn { background: #ef4444; }
+        .danger-btn:hover { background: #dc2626; }
+        .menu-row { display: flex; gap: 12px; margin-top: 15px; }
+        .filter-row { display: flex; gap: 8px; margin: 12px 0 4px 0; }
+        .filter-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #9ca3af;
+            font-size: 13px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .filter-btn.active { background: #3b82f6; color: #fff; border-color: #60a5fa; }
+        .world-btn { font-size: 14px; font-weight: bold; padding: 8px 24px; border-radius: 6px; }
+        .world-btn.active { background: #10b981; color: white; }
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 650px;
+            margin: 15px 0;
+        }
+        .level-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 8px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .level-card.unlocked { color: #10b981; border-color: rgba(16, 185, 129, 0.3); }
+        .level-card.unlocked:hover { background: #10b981; color: #fff; }
+        .level-card.locked { color: #4b5563; cursor: not-allowed; }
+        .config-box {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid #2a2d3d;
+            padding: 20px 25px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 500px;
+            margin-bottom: 20px;
+        }
+        .setting-group { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .number-input {
+            width: 70px;
+            padding: 6px;
+            background: #11131e;
+            color: #fff;
+            border: 1px solid #4b5563;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; text-align: left; }
+        .check-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+        .range-slider { width: 55%; }
+
+        /* Map-Editor Split Layout (No shift / boxes stay plain) */
+        #editor-ui {
+            position: absolute;
+            top: 0; left: 0; width: 800px; height: 500px;
+            z-index: 15; background: #0c0d14;
+            display: flex; flex-direction: row; box-sizing: border-box;
+            border-radius: 8px; border: 2px solid #1e2230;
+        }
+        .editor-workspace {
+            flex: 1; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; background: #07080d; padding: 20px;
+        }
+        .editor-sidebar {
+            width: 260px; background: #11131f; border-left: 2px solid #1e2230;
+            display: flex; flex-direction: column; box-sizing: border-box; padding: 20px; text-align: left;
+        }
+        .pixel-grid {
+            display: grid; grid-template-columns: repeat(8, 38px); gap: 2px;
+            background: #181b28; padding: 6px; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .pixel-cell {
+            width: 38px; height: 38px; background: #030305; border-radius: 3px; cursor: pointer;
+            box-sizing: border-box; border: 1px solid transparent;
+        }
+        /* Highlight box only via color shift, no moving up or resizing */
+        .pixel-cell:hover { background-color: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); }
+        .editor-section-title { font-size: 12px; font-weight: bold; color: #64748b; letter-spacing: 1px; margin: 15px 0 8px 0; text-transform: uppercase; }
+        .palette-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .color-swatch {
+            height: 32px; border-radius: 6px; cursor: pointer; border: 2px solid transparent; box-sizing: border-box;
+        }
+        .color-swatch.active { border-color: #fff; box-shadow: 0 0 8px currentColor; }
+        .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .tool-btn {
+            background: #1e293b; color: #94a3b8; font-size: 13px; font-weight: bold; padding: 8px;
+            border: 1px solid #334155; border-radius: 6px; cursor: pointer; text-align: center;
+        }
+        .tool-btn.active { background: #3b82f6; color: white; border-color: #60a5fa; }
+    </style>
+</head>
+<body>
+
+<div id="wrapper">
+    <div id="hud">
+        <div id="left-hud">
+            <div>SCORE: <span id="score">0</span></div>
+            <div id="status-container"></div>
+        </div>
+        <div id="center-hud" style="color: #3b82f6;"><span id="hud-level"></span></div>
+        <div>LIVES: <span id="lives">3</span></div>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="game" width="800" height="500"></canvas>
+
+        <div id="menu" class="screen">
+            <h1 id="menu-title" style="margin: 0; font-size: 36px; letter-spacing: 2px;">360° VECTOR ASTEROIDS</h1>
+            <p id="menu-sub" style="color: #9ca3af; margin: 5px 0 25px 0; font-size: 15px;">W/Up = Thrust • A/D/Left/Right = Rotate • Space = Shoot • P = Pause</p>
+            
+            <div class="menu-row" style="margin-bottom: 12px; gap: 15px;">
+                <button onclick="startSandboxPlay()" style="font-size: 18px; padding: 12px 35px;">SANDBOX FLIGHT</button>
+                <button onclick="openLevelsScreen()" style="font-size: 18px; padding: 12px 35px; background: #10b981;">CAMPAIGN MODE</button>
+            </div>
+            
+            <div class="menu-row">
+                <button class="secondary-btn" onclick="openEditorScreen()">PLAYER SHIP EDITOR</button>
+                <button class="secondary-btn" onclick="openOptionsScreen()">OPTIONS</button>
+            </div>
+        </div>
+
+        <div id="levels-screen" class="screen hidden">
+            <h2>CAMPAIGN SECTOR SELECT</h2>
+            <div class="filter-row">
+                <button id="world-btn-1" class="filter-btn world-btn active" onclick="switchActiveWorldTab(1)">GALAXY 1</button>
+                <button id="world-btn-2" class="filter-btn world-btn" onclick="switchActiveWorldTab(2)">GALAXY 2</button>
+            </div>
+            <div class="level-grid" id="campaign-level-matrix"></div>
+            <div class="menu-row">
+                <button class="secondary-btn" onclick="returnToHome()">BACK TO MAIN MENU</button>
+            </div>
+        </div>
+
+        <div id="options-screen" class="screen hidden">
+            <h2>SANDBOX SETTINGS</h2>
+            <div class="config-box">
+                <div class="setting-group">
+                    <label>Starting Health/Lives:</label>
+                    <input type="number" id="starting-lives-input" class="number-input" min="1" max="10" value="3">
+                </div>
+                <div class="setting-group">
+                    <label>Asteroid Density modifier:</label>
+                    <input type="range" id="spawn-rate-slider" class="range-slider" min="2" max="15" value="5" oninput="document.getElementById('spawn-label').textContent=this.value">
+                    <span id="spawn-label" style="font-weight:bold; width:40px; text-align:right;">5</span>
+                </div>
+                <label style="font-weight:bold; font-size:15px; display:block; text-align:left; margin-top:15px;">Active Power-up Buffs:</label>
+                <div class="checkbox-grid">
+                    <label class="check-item"><input type="checkbox" id="allow-triple" checked> Triple Shot (T)</label>
+                    <label class="check-item"><input type="checkbox" id="allow-shield" checked> Energy Shield (S)</label>
+                </div>
+            </div>
+            <button class="secondary-btn" onclick="saveOptionsAndReturn()">SAVE CONFIG</button>
+        </div>
+
+        <div id="editor-ui" class="hidden">
+            <div class="editor-workspace">
+                <h2 style="margin: 0 0 5px 0; font-size:22px; letter-spacing:1px;">PLAYER SHIP BLUEPRINT EDITOR</h2>
+                <p style="color: #64748b; font-size:13px; margin: 0 0 20px 0;">Hold click & drag to paint custom 8x8 ship avatars</p>
+                <div class="pixel-grid" id="editor-grid-container"></div>
+            </div>
+            <div class="editor-sidebar">
+                <div class="editor-section-title" style="margin-top:0;">Painting Mode</div>
+                <div class="tool-grid">
+                    <div id="tool-draw" class="tool-btn active" onclick="setEditorTool('draw')">PENCIL</div>
+                    <div id="tool-erase" class="tool-btn" onclick="setEditorTool('erase')">ERASER</div>
+                </div>
+
+                <div class="editor-section-title">Neon Color Palette</div>
+                <div class="palette-grid">
+                    <div id="swatch-1" class="color-swatch active" style="background:#3b82f6;" onclick="selectEditorColor('#3b82f6', 1)"></div>
+                    <div id="swatch-2" class="color-swatch" style="background:#10b981;" onclick="selectEditorColor('#10b981', 2)"></div>
+                    <div id="swatch-3" class="color-swatch" style="background:#ef4444;" onclick="selectEditorColor('#ef4444', 3)"></div>
+                    <div id="swatch-4" class="color-swatch" style="background:#eab308;" onclick="selectEditorColor('#eab308', 4)"></div>
+                    <div id="swatch-5" class="color-swatch" style="background:#a855f7;" onclick="selectEditorColor('#a855f7', 5)"></div>
+                    <div id="swatch-6" class="color-swatch" style="background:#ec4899;" onclick="selectEditorColor('#ec4899', 6)"></div>
+                    <div id="swatch-7" class="color-swatch" style="background:#06b6d4;" onclick="selectEditorColor('#06b6d4', 7)"></div>
+                    <div id="swatch-8" class="color-swatch" style="background:#f97316;" onclick="selectEditorColor('#f97316', 8)"></div>
+                </div>
+
+                <div class="editor-section-title">Bulk Actions</div>
+                <div class="tool-grid" style="margin-bottom:auto;">
+                    <div class="tool-btn" onclick="fillEntireEditorGrid()" style="background:#1e293b; color:#fff;">FILL ALL</div>
+                    <div class="tool-btn" onclick="clearEditorGrid()" style="background:#1e293b; color:#fff;">CLEAR</div>
+                </div>
+
+                <button onclick="saveCustomShipBlueprint()" style="width:100%; margin-bottom:10px;">SAVE BLUEPRINT</button>
+                <button class="danger-btn" onclick="exitEditorScreen()" style="width:100%;">EXIT SCREEN</button>
+            </div>
+        </div>
+
+        <div id="pause-screen" class="screen hidden">
+            <h2>SYSTEM PAUSED</h2>
+            <button onclick="togglePause()" style="width:200px; margin-bottom:10px;">RESUME</button>
+            <button class="secondary-btn" onclick="returnToHome()" style="width:200px;">QUIT TO MENU</button>
+        </div>
+
+        <div id="victory-screen" class="screen hidden">
+            <h2 id="victory-title" style="color:#10b981;">SECTOR SECURED</h2>
+            <p>Score: <span id="victory-score">0</span></p>
+            <button id="next-level-btn" onclick="advanceNextLevel()" style="width:200px;">NEXT SECTOR</button>
+            <button class="secondary-btn" onclick="returnToHome()" style="width:200px; margin-top:10px;">MENU</button>
+        </div>
+
+        <div id="gameover-screen" class="screen hidden">
+            <h2 style="color:#ef4444; font-size:32px; letter-spacing:1px;">SHIP DESTROYED</h2>
+            <p style="color:#9ca3af; margin:0 0 20px 0;">Your fleet structural integrity reached 0%</p>
+            <button onclick="startGame()" style="width:200px; margin-bottom:10px; background:#ef4444;">TRY AGAIN</button>
+            <button class="secondary-btn" onclick="returnToHome()" style="width:200px;">MAIN MENU</button>
+        </div>
+
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+// System Parameters
+let score = 0, lives = 3;
+let isPlaying = false, isPaused = false, isLevelsMode = false;
+let currentLevel = 1, activeViewWorld = 1, maxUnlockedLevel = 1;
+let lastTime = 0, animationId = null;
+
+// Sandbox Settings
+let sandboxLives = 3, sandboxAsteroidCount = 5;
+let sandboxBuffs = { TRIPLE: true, SHIELD: true };
+let targetAsteroidMaxCount = 5, activeBuffs = { TRIPLE: true, SHIELD: true };
+
+// Player Physics Engine Config
+let player = { 
+    x: 400, y: 250, w: 42, h: 42, 
+    vx: 0, vy: 0, angle: -Math.PI / 2, 
+    rotationSpeed: 0.075, thrust: 0.15, friction: 0.982 
+};
+let bullets = [], obstacles = [], powerups = [], stars = [];
+let keys = {};
+let activeTimers = { TRIPLE: 0, SHIELD: 0 };
+
+// Editor Grid Properties
+let isLeftMouseDown = false;
+let currentEditorTool = "draw"; 
+let currentColorSelection = "#3b82f6";
+let activeShipColors = Array.from({length: 8}, () => Array(8).fill("#050508"));
+
+let defaultMatrix = [
+    [0,0,0,1,1,0,0,0],
+    [0,0,1,1,1,1,0,0],
+    [0,0,1,1,1,1,0,0],
+    [0,1,1,1,1,1,1,0],
+    [0,1,1,1,1,1,1,0],
+    [1,1,1,1,1,1,1,1],
+    [1,1,0,1,1,0,1,1],
+    [1,0,0,0,0,0,0,1]
+];
+for(let r=0; r<8; r++) {
+    for(let c=0; c<8; c++) if(defaultMatrix[r][c] === 1) activeShipColors[r][c] = "#3b82f6";
+}
+
+// Background space layer
+for (let i = 0; i < 85; i++) {
+    stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 1.8 + 0.4 });
+}
+
+window.addEventListener("mousedown", () => { isLeftMouseDown = true; });
+window.addEventListener("mouseup", () => { isLeftMouseDown = false; });
+
+window.addEventListener("keydown", e => {
+    keys[e.key] = true;
+    if(e.key === "Escape") returnToHome();
+    if(e.key.toLowerCase() === "p" && isPlaying) togglePause();
+    if(e.key === " " && isPlaying && !isPaused) fireBullet();
+});
+window.addEventListener("keyup", e => keys[e.key] = false);
+
+function fireBullet() {
+    const bSpeed = 10;
+    const sX = player.x + Math.cos(player.angle) * (player.w / 2);
+    const sY = player.y + Math.sin(player.angle) * (player.h / 2);
+    
+    if(activeTimers.TRIPLE > 0) {
+        bullets.push({x: sX, y: sY, vx: Math.cos(player.angle) * bSpeed + player.vx, vy: Math.sin(player.angle) * bSpeed + player.vy, angle: player.angle, life: 50});
+        bullets.push({x: sX, y: sY, vx: Math.cos(player.angle - 0.2) * bSpeed + player.vx, vy: Math.sin(player.angle - 0.2) * bSpeed + player.vy, angle: player.angle - 0.2, life: 50});
+        bullets.push({x: sX, y: sY, vx: Math.cos(player.angle + 0.2) * bSpeed + player.vx, vy: Math.sin(player.angle + 0.2) * bSpeed + player.vy, angle: player.angle + 0.2, life: 50});
+    } else {
+        bullets.push({x: sX, y: sY, vx: Math.cos(player.angle) * bSpeed + player.vx, vy: Math.sin(player.angle) * bSpeed + player.vy, angle: player.angle, life: 50});
+    }
+}
+
+function spawnAsteroid(sizeClass = 3, explicitX = null, explicitY = null) {
+    let radius = sizeClass === 3 ? 35 : sizeClass === 2 ? 22 : 12;
+    let x = explicitX !== null ? explicitX : (Math.random() > 0.5 ? 0 - radius : canvas.width + radius);
+    let y = explicitY !== null ? explicitY : Math.random() * canvas.height;
+    
+    let aAngle = Math.random() * Math.PI * 2;
+    let speed = sizeClass === 3 ? 1.1 : sizeClass === 2 ? 1.8 : 2.5;
+
+    let vertices = [];
+    let totalPoints = 8 + Math.floor(Math.random() * 5);
+    for(let i=0; i<totalPoints; i++) {
+        let angleOffset = (i / totalPoints) * Math.PI * 2;
+        let variance = radius * 0.75 + Math.random() * (radius * 0.35);
+        vertices.push({x: Math.cos(angleOffset) * variance, y: Math.sin(angleOffset) * variance});
+    }
+
+    obstacles.push({
+        x: x, y: y, vx: Math.cos(aAngle) * speed, vy: Math.sin(aAngle) * speed,
+        r: radius, sizeClass: sizeClass, vertices: vertices
+    });
+}
+
+function startSandboxPlay() { isLevelsMode = false; startGame(); }
+function openLevelsScreen() { document.getElementById("menu").classList.add("hidden"); document.getElementById("levels-screen").classList.remove("hidden"); renderLevelMatrix(); }
+function switchActiveWorldTab(w) { activeViewWorld = w; renderLevelMatrix(); }
+function renderLevelMatrix() {
+    const container = document.getElementById("campaign-level-matrix"); container.innerHTML = "";
+    let offset = (activeViewWorld - 1) * 10;
+    for(let i=1; i<=10; i++) {
+        let actualLvl = offset + i;
+        let card = document.createElement("div");
+        if(actualLvl <= maxUnlockedLevel) {
+            card.className = "level-card unlocked"; card.textContent = `Sector ${i}`;
+            card.onclick = () => { isLevelsMode = true; currentLevel = actualLvl; startGame(); };
+        } else { card.className = "level-card locked"; card.textContent = `🔒 Sector ${i}`; }
+        container.appendChild(card);
+    }
+}
+
+function openOptionsScreen() { document.getElementById("menu").classList.add("hidden"); document.getElementById("options-screen").classList.remove("hidden"); }
+function saveOptionsAndReturn() {
+    sandboxLives = Math.max(1, parseInt(document.getElementById("starting-lives-input").value) || 3);
+    sandboxAsteroidCount = parseInt(document.getElementById("spawn-rate-slider").value);
+    sandboxBuffs.TRIPLE = document.getElementById("allow-triple").checked;
+    sandboxBuffs.SHIELD = document.getElementById("allow-shield").checked;
+    returnToHome();
+}
+
+/* Map Editor Canvas Actions */
+function openEditorScreen() {
+    document.getElementById("menu").classList.add("hidden"); document.getElementById("editor-ui").classList.remove("hidden");
+    const gridContainer = document.getElementById("editor-grid-container"); gridContainer.innerHTML = "";
+    
+    for(let r=0; r<8; r++) {
+        for(let c=0; c<8; c++) {
+            let cell = document.createElement("div"); 
+            cell.className = "pixel-cell"; 
+            cell.style.backgroundColor = activeShipColors[r][c];
+            
+            cell.addEventListener("mousedown", (e) => {
+                e.preventDefault();
+                applyPaintToCell(r, c, cell);
+            });
+            cell.addEventListener("mouseenter", () => {
+                if(isLeftMouseDown) {
+                    applyPaintToCell(r, c, cell);
+                }
+            });
+            gridContainer.appendChild(cell);
+        }
+    }
+}
+
+function applyPaintToCell(r, c, cellElement) {
+    if(currentEditorTool === "draw") {
+        activeShipColors[r][c] = currentColorSelection;
+        cellElement.style.backgroundColor = currentColorSelection;
+    } else {
+        activeShipColors[r][c] = "#050508";
+        cellElement.style.backgroundColor = "#050508";
+    }
+}
+
+function setEditorTool(tool) {
+    currentEditorTool = tool;
+    document.getElementById("tool-draw").classList.toggle("active", tool === "draw");
+    document.getElementById("tool-erase").classList.toggle("active", tool === "erase");
+}
+function selectEditorColor(color, id) {
+    currentColorSelection = color;
+    for(let i=1; i<=8; i++) document.getElementById(`swatch-${i}`).classList.remove("active");
+    document.getElementById(`swatch-${id}`).classList.add("active");
+    setEditorTool("draw");
+}
+function fillEntireEditorGrid() {
+    activeShipColors = Array.from({length: 8}, () => Array(8).fill(currentColorSelection));
+    openEditorScreen();
+}
+function clearEditorGrid() {
+    activeShipColors = Array.from({length: 8}, () => Array(8).fill("#050508"));
+    openEditorScreen();
+}
+function saveCustomShipBlueprint() { alert("Ship design saved!"); exitEditorScreen(); }
+function exitEditorScreen() { document.getElementById("editor-ui").classList.add("hidden"); document.getElementById("menu").classList.remove("hidden"); }
+
+function returnToHome() {
+    isPlaying = false; isPaused = false; if(animationId) cancelAnimationFrame(animationId);
+    document.getElementById("menu").classList.remove("hidden");
+    document.getElementById("levels-screen").classList.add("hidden"); document.getElementById("options-screen").classList.add("hidden");
+    document.getElementById("pause-screen").classList.add("hidden"); document.getElementById("victory-screen").classList.add("hidden");
+    document.getElementById("gameover-screen").classList.add("hidden");
+}
+function togglePause() { isPaused = !isPaused; document.getElementById("pause-screen").classList.toggle("hidden", !isPaused); if(!isPaused) lastTime = performance.now(); }
+
+function startGame() {
+    document.getElementById("menu").classList.add("hidden"); document.getElementById("levels-screen").classList.add("hidden"); 
+    document.getElementById("victory-screen").classList.add("hidden"); document.getElementById("gameover-screen").classList.add("hidden");
+    
+    if(isLevelsMode) {
+        document.getElementById("hud-level").textContent = `GALAXY ${Math.floor((currentLevel-1)/10)+1} - SEC ${((currentLevel-1)%10)+1}`;
+        lives = 3; targetAsteroidMaxCount = 3 + currentLevel;
+        activeBuffs = { TRIPLE: true, SHIELD: true };
+    } else {
+        document.getElementById("hud-level").textContent = "SANDBOX FLIGHT";
+        lives = sandboxLives; targetAsteroidMaxCount = sandboxAsteroidCount;
+        activeBuffs = { ...sandboxBuffs };
+    }
+    
+    score = 0; bullets = []; obstacles = []; powerups = [];
+    player.x = canvas.width/2; player.y = canvas.height/2; player.vx = 0; player.vy = 0; player.angle = -Math.PI/2;
+    activeTimers.TRIPLE = 0; activeTimers.SHIELD = 0;
+    document.getElementById("score").textContent = score; document.getElementById("lives").textContent = lives;
+    
+    for(let i=0; i<targetAsteroidMaxCount; i++) {
+        let ax = Math.random() * canvas.width;
+        let ay = Math.random() * canvas.height;
+        if(Math.abs(ax - player.x) < 110 && Math.abs(ay - player.y) < 110) { ax += 160; ay += 160; }
+        spawnAsteroid(3, ax, ay);
+    }
+
+    isPlaying = true; isPaused = false; lastTime = performance.now();
+    animationId = requestAnimationFrame(tick);
+}
+
+function isPlayerMatrixEmpty() {
+    for(let r=0; r<8; r++) {
+        for(let c=0; c<8; c++) if(activeShipColors[r][c] !== "#050508") return false;
+    }
+    return true;
+}
+
+function update(dt) {
+    if(!isPlaying || isPaused) return;
+
+    if(keys["ArrowLeft"] || keys["a"]) player.angle -= player.rotationSpeed;
+    if(keys["ArrowRight"] || keys["d"]) player.angle += player.rotationSpeed;
+    
+    if(keys["ArrowUp"] || keys["w"]) {
+        player.vx += Math.cos(player.angle) * player.thrust;
+        player.vy += Math.sin(player.angle) * player.thrust;
+    }
+    
+    player.vx *= player.friction; player.vy *= player.friction;
+    player.x += player.vx; player.y += player.vy;
+
+    // Screen wrapping parameters
+    if(player.x < -player.w) player.x = canvas.width;
+    if(player.x > canvas.width + player.w) player.x = -player.w;
+    if(player.y < -player.h) player.y = canvas.height;
+    if(player.y > canvas.height + player.h) player.y = -player.h;
+
+    const badgeContainer = document.getElementById("status-container"); badgeContainer.innerHTML = "";
+    Object.keys(activeTimers).forEach(k => {
+        if(activeTimers[k] > 0) {
+            activeTimers[k] -= dt;
+            let b = document.createElement("div"); b.className = "status-badge";
+            b.textContent = `${k} (${(activeTimers[k]/1000).toFixed(1)}s)`; badgeContainer.appendChild(b);
+        }
+    });
+
+    for(let i=bullets.length-1; i>=0; i--) {
+        let b = bullets[i]; b.x += b.vx; b.y += b.vy; b.life--;
+        if(b.x < 0) b.x = canvas.width; if(b.x > canvas.width) b.x = 0;
+        if(b.y < 0) b.y = canvas.height; if(b.y > canvas.height) b.y = 0;
+        if(b.life <= 0) bullets.splice(i, 1);
+    }
+
+    for(let i=obstacles.length-1; i>=0; i--) {
+        let o = obstacles[i]; o.x += o.vx; o.y += o.vy;
+        
+        if(o.x < -o.r) o.x = canvas.width + o.r;
+        if(o.x > canvas.width + o.r) o.x = -o.r;
+        if(o.y < -o.r) o.y = canvas.height + o.r;
+        if(o.y > canvas.height + o.r) o.y = -o.r;
+
+        let distShipX = o.x - player.x;
+        let distShipY = o.y - player.y;
+        let distDistance = Math.sqrt(distShipX*distShipX + distShipY*distShipY);
+        if(distDistance < o.r + (player.w / 2.2)) {
+            obstacles.splice(i, 1);
+            if(activeTimers.SHIELD <= 0) {
+                lives--; document.getElementById("lives").textContent = lives;
+                player.x = canvas.width/2; player.y = canvas.height/2; player.vx = 0; player.vy = 0;
+                if(lives <= 0) { isPlaying = false; document.getElementById("gameover-screen").classList.remove("hidden"); }
+            } else { activeTimers.SHIELD = 0; }
+            continue;
+        }
+
+        for(let j=bullets.length-1; j>=0; j--) {
+            let b = bullets[j];
+            let dBX = b.x - o.x; let dBY = b.y - o.y;
+            let dRadiusTest = Math.sqrt(dBX*dBX + dBY*dBY);
+            
+            if(dRadiusTest < o.r) {
+                bullets.splice(j, 1);
+                if(o.sizeClass > 1) {
+                    spawnAsteroid(o.sizeClass - 1, o.x, o.y);
+                    spawnAsteroid(o.sizeClass - 1, o.x, o.y);
+                }
+                
+                if(Math.random() < 0.20) {
+                    let type = Math.random() > 0.5 ? "TRIPLE" : "SHIELD";
+                    if(activeBuffs[type]) {
+                        // Calculate direction facing toward the absolute center
+                        let targetAngle = Math.atan2(250 - o.y, 400 - o.x);
+                        let pSpeed = 2.2;
+                        powerups.push({
+                            x: o.x, y: o.y, w:18, h:18, type: type,
+                            vx: Math.cos(targetAngle) * pSpeed,
+                            vy: Math.sin(targetAngle) * pSpeed
+                        });
+                    }
+                }
+                
+                obstacles.splice(i, 1);
+                score += 20; document.getElementById("score").textContent = score;
+
+                if(obstacles.length === 0) {
+                    isPlaying = false;
+                    if(isLevelsMode) {
+                        if(currentLevel === maxUnlockedLevel) maxUnlockedLevel++;
+                        document.getElementById("victory-score").textContent = score;
+                        document.getElementById("victory-screen").classList.remove("hidden");
+                    } else { alert("Sandbox sector clear!"); returnToHome(); }
+                }
+                break;
+            }
+        }
+    }
+
+    // Power-up continuous flight movement update
+    for(let i=powerups.length-1; i>=0; i--) {
+        let p = powerups[i];
+        p.x += p.vx * (dt / 16.6);
+        p.y += p.vy * (dt / 16.6);
+
+        // Wrap or clean drop items off limits if they drift away completely
+        if(p.x < -30 || p.x > canvas.width + 30 || p.y < -30 || p.y > canvas.height + 30) {
+            powerups.splice(i, 1);
+            continue;
+        }
+
+        let dPX = p.x - player.x; let dPY = p.y - player.y;
+        if(Math.sqrt(dPX*dPX + dPY*dPY) < player.w * 0.85) {
+            activeTimers[p.type] = 8000; powerups.splice(i, 1);
+        }
+    }
+}
+
+function render() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    
+    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+    stars.forEach(s => ctx.fillRect(s.x, s.y, s.size, s.size));
+
+    // Ship Translate
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(player.angle + Math.PI / 2);
+    
+    let pSize = player.w / 8;
+    
+    if(isPlayerMatrixEmpty()) {
+        ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 2.5; ctx.fillStyle = "#111424";
+        ctx.beginPath();
+        ctx.moveTo(0, -player.h/2); ctx.lineTo(player.w/2, player.h/2);
+        ctx.lineTo(0, player.h/3); ctx.lineTo(-player.w/2, player.h/2);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else {
+        for(let r=0; r<8; r++) {
+            for(let c=0; c<8; c++) {
+                let color = activeShipColors[r][c];
+                if(color !== "#050508") {
+                    ctx.fillStyle = color;
+                    ctx.fillRect((c * pSize) - player.w/2, (r * pSize) - player.h/2, pSize, pSize);
+                    ctx.strokeStyle = "rgba(255,255,255,0.15)"; ctx.lineWidth = 1;
+                    ctx.strokeRect((c * pSize) - player.w/2, (r * pSize) - player.h/2, pSize, pSize);
+                }
+            }
+        }
+    }
+    ctx.restore();
+
+    if(activeTimers.SHIELD > 0) {
+        ctx.strokeStyle = "#a855f7"; ctx.lineWidth = 2.5; ctx.beginPath();
+        ctx.arc(player.x, player.y, player.w * 0.9, 0, Math.PI*2); ctx.stroke();
+    }
+
+    // Actual Plasma Laser Bolts (Elongated vector rays)
+    bullets.forEach(b => {
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.angle);
+        
+        // Laser outer beam glow tail
+        ctx.strokeStyle = "#ff3333";
+        ctx.lineWidth = 4;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(-14, 0);
+        ctx.lineTo(2, 0);
+        ctx.stroke();
+        
+        // Inner hot laser focal point line
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-8, 0);
+        ctx.lineTo(2, 0);
+        ctx.stroke();
+        
+        ctx.restore();
+    });
+
+    obstacles.forEach(o => {
+        ctx.save();
+        ctx.translate(o.x, o.y);
+        ctx.fillStyle = "#161822"; ctx.strokeStyle = "#4b5563"; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(o.vertices[0].x, o.vertices[0].y);
+        for(let i=1; i<o.vertices.length; i++) ctx.lineTo(o.vertices[i].x, o.vertices[i].y);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+
+        ctx.strokeStyle = "#2e3344"; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(o.vertices[0].x * 0.6, o.vertices[0].y * 0.6);
+        for(let i=1; i<Math.floor(o.vertices.length/1.5); i++) ctx.lineTo(o.vertices[i].x * 0.5, o.vertices[i].y * 0.5);
+        ctx.stroke();
+        ctx.restore();
+    });
+
+    powerups.forEach(p => {
+        let isTriple = p.type === "TRIPLE";
+        ctx.fillStyle = isTriple ? "#eab308" : "#a855f7";
+        ctx.shadowBlur = 8; ctx.shadowColor = ctx.fillStyle;
+        ctx.fillRect(p.x - 9, p.y - 9, p.w, p.h);
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 1;
+        ctx.strokeRect(p.x - 7, p.y - 7, p.w - 4, p.h - 4);
+        ctx.shadowBlur = 0;
+    });
+}
+
+function advanceNextLevel() { currentLevel++; startGame(); }
+function tick(ts) {
+    if(!isPlaying) return;
+    let dt = ts - lastTime; lastTime = ts;
+    if(dt > 100) dt = 16.6;
+    update(dt); render();
+    animationId = requestAnimationFrame(tick);
+}
+</script>
+</body>
+</html>
